@@ -182,3 +182,20 @@ td.wrap { white-space: normal; }
 .choice-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .numwrap input { width: 84px; }
 .numwrap .unit { width: 54px; }
+
+/* Tool rows with favourites */
+.row.tool { padding: 0; gap: 0; }
+.row.tool .sel {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; color: inherit;
+  background: none; border: 0; padding: 12px 6px 12px 14px; min-height: 56px; cursor: pointer;
+}
+.row.tool.on { background: var(--accent-soft); }
+.row.tool .sel[aria-pressed="true"] .check { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.star {
+  flex: none; width: 52px; align-self: stretch; font-size: 1.5rem; line-height: 1; background: none; border: 0;
+  color: var(--muted); cursor: pointer;
+}
+.star.on { color: #d49a00; }
+.fav-head { display: flex; align-items: baseline; justify-content: space-between; }
+.fav-head .linkbtn { padding: 0 4px; }
+.fav-tip { color: var(--muted); font-size: 0.85rem; margin: 14px 4px 0; }

@@ -209,4 +209,107 @@ t('grammar holds every command and number word', () => {
   for (const w of ['one', 'twenty', 'hundred', 'point', 'oh', 'skip', 'back', 'stop', 'yes', 'no', 'male', 'female', '[unk]']) assert.ok(g.includes(w), w);
 });
 
+// ---- new tools (v3)
+const crForEgfr = (target, age, sex) => { // invert CKD-EPI numerically
+  const f = sex === 'F', k = f ? 0.7 : 0.9, a = f ? -0.241 : -0.302;
+  const e = cr => { const s = cr / 88.4 / k; return 142 * Math.pow(Math.min(s, 1), a) * Math.pow(Math.max(s, 1), -1.2) * Math.pow(0.9938, age) * (f ? 1.012 : 1); };
+  let lo = 20, hi = 2000;
+  for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; e(m) > target ? lo = m : hi = m; }
+  return (lo + hi) / 2;
+};
+const lineVal = (r, label) => parseFloat(r.lines.find(l => l[0].startsWith(label))[1]);
+
+t('KFRE 4-variable matches published example (55 M, eGFR 35, ACR 300 mg/g -> 3.8% / 13.9%)', () => {
+  // exact eGFR is needed, so check the equation on its own as well as through creatinine
+  const r = val('kfre4', { age: 55, sex: 'M', cr: crForEgfr(35, 55, 'M'), acr: 300 / 8.84 });
+  near(lineVal(r, '2-year'), 3.8, 0.15); near(lineVal(r, '5-year'), 13.9, 0.2);
+});
+t('KFRE 8-variable reduces to centred terms at the cohort means', () => {
+  const base = { age: 55, sex: 'M', cr: crForEgfr(35, 55, 'M'), acr: 300 / 8.84 };
+  const r = val('kfre8', { ...base, albumin: 39.97, phos: 3.916 / 3.097, hco3: 25.57, calcium: 9.355 / 4.008 });
+  const lp = -0.1992 * (5.5 - 7.036) + 0.1602 * (1 - 0.5642) - 0.4919 * (35 / 5 - 7.222) + 0.3364 * (Math.log(300) - 5.137);
+  near(lineVal(r, '2-year'), 100 * (1 - Math.pow(0.9780, Math.exp(lp))), 0.1);
+  near(lineVal(r, '5-year'), 100 * (1 - Math.pow(0.9301, Math.exp(lp))), 0.1);
+  // lower albumin raises risk
+  assert.ok(lineVal(val('kfre8', { ...base, albumin: 30, phos: 1.26, hco3: 25.57, calcium: 2.33 }), '5-year') > lineVal(r, '5-year'));
+});
+t('CKD staging', () => {
+  const r = val('ckdstage', { cr: crForEgfr(40, 70, 'M'), age: 70, sex: 'M', acr: 40 });
+  assert.equal(r.value, 'G3b A3'); assert.match(r.summary, /Very high/);
+  assert.equal(val('ckdstage', { cr: 70, age: 40, sex: 'F', acr: 1 }).summary.startsWith('Low risk'), true);
+});
+t('FENa, FEurea, urea:Cr, urine anion gap', () => {
+  near(parseFloat(val('fena', { una: 20, cr: 200, na: 140, ucr: 10 }).value), 0.29, 0.01);
+  near(parseFloat(val('feurea', { uurea: 200, cr: 200, urea: 20, ucr: 10 }).value), 20, 0.05);
+  const u = val('ureacr', { urea: 20, cr: 100 });
+  assert.equal(u.value, '50'); assert.equal(lineVal(u, 'Urea (mmol/L)'), 200);
+  assert.equal(val('uag', { una: 40, uk: 30, ucl: 90 }).value, '-20');
+});
+t('AIN calculator matches the published worked examples', () => {
+  // Cr 4.0 mg/dL, BUN 40, SG 1.010, protein <2+ -> high; Cr 1.5, BUN 30, SG 1.020, protein 2+ -> low
+  const a = val('ain', { cr: 4 * 88.4, urea: 40 / 2.8, usg: 1.010, uprotHigh: false, ainPrev: 23 });
+  assert.equal(a.value, '56%'); assert.equal(a.tier, 'high');
+  const b = val('ain', { cr: 1.5 * 88.4, urea: 30 / 2.8, usg: 1.020, uprotHigh: true, ainPrev: 23 });
+  assert.equal(b.value, '7%'); assert.equal(b.tier, 'low');
+});
+t('ATN-ISI and SHARF II', () => {
+  const a = val('atnisi', { age: 70, sex: 'M', oliguria: true, atnHypotension: true, mechVent: true, ams: true, bili: 15 });
+  assert.equal(a.value, '76%');
+  const b = val('atnisi', { age: 40, sex: 'F', nephrotoxic: true, bili: 15 }); // 0.128 - 0.109 - 0.154 + 0.21 = 0.075
+  assert.equal(b.value, '8%');
+  const s2 = val('sharf', { age: 65, albumin: 28, ptPct: '3', mechVent: true, bili: 17.1, sepsis: true, sharfHypotension: true });
+  assert.equal(s2.value, '86');
+});
+t('Mehran', () => {
+  const r = val('mehran', { mehHypotension: true, diabetes: true, contrast: 250, cr: 1.8 * 88.4, age: 60, sex: 'M' });
+  assert.equal(r.lines[0][1], '14 points'); // creatinine version, published example
+  const e = val('mehran', { chfSevere: true, diabetes: true, contrast: 200, cr: crForEgfr(42, 72, 'M'), age: 72, sex: 'M' });
+  assert.equal(e.value, '12 points'); // 5 + 3 + 2 (contrast) + 2 (eGFR 40-60)
+});
+t('McMahon', () => {
+  const r = val('mcmahon', { age: 75, sex: 'F', rhabdoOtherCause: true, ck: 50000, hco3: 18, cr: 2.0 * 88.4, calcium: 2.0, phos: 1.13 });
+  assert.equal(r.value, '12 points'); assert.equal(r.tier, 'high');
+  assert.equal(val('mcmahon', { age: 30, sex: 'M', ck: 20000, hco3: 24, cr: 80, calcium: 2.3, phos: 1.0 }).value, '0 points');
+});
+t('acid-base: delta gap, Winters, compensation', () => {
+  const d = val('deltagap', { na: 140, cl: 100, hco3: 10 });
+  assert.equal(d.value, '1.29'); assert.match(d.summary, /pure anion gap/); assert.equal(lineVal(d, 'Corrected'), 28);
+  assert.equal(val('winters', { hco3: 12 }).value, '26');
+  assert.match(val('winters', { hco3: 12, pco2: 35 }).summary, /respiratory acidosis/);
+  let r = val('abg', { ph: 7.25, pco2: 26, hco3: 12 });
+  assert.equal(r.value, 'Metabolic acidosis'); assert.match(r.summary, /appropriate/);
+  r = val('abg', { ph: 7.30, pco2: 60, hco3: 26 });
+  assert.equal(r.value, 'Respiratory acidosis'); assert.match(r.summary, /acute/);
+  r = val('abg', { ph: 7.36, pco2: 60, hco3: 33 });
+  assert.match(r.value, /Mixed|No primary/);
+  r = val('abg', { ph: 7.50, pco2: 48, hco3: 36 });
+  assert.equal(r.value, 'Metabolic alkalosis'); assert.match(r.summary, /appropriate/);
+  r = val('abg', { ph: 7.50, pco2: 28, hco3: 22 });
+  assert.equal(r.value, 'Respiratory alkalosis');
+  r = val('abg', { ph: 7.10, pco2: 55, hco3: 16 });
+  assert.match(r.value, /Mixed metabolic and respiratory acidosis/);
+});
+t('P/F, MAP, fluids, sodium', () => {
+  assert.equal(val('pf', { pao2: 80, fio2: 40 }).value, '200'); assert.match(val('pf', { pao2: 80, fio2: 40 }).summary, /moderate/);
+  assert.equal(val('map', { sbp: 120, dbp: 60 }).value, '80');
+  assert.equal(val('fwd', { na: 160, weight: 70, age: 40, sex: 'M' }).value, '6');
+  assert.equal(val('fwd', { na: 160, weight: 70, age: 70, sex: 'F' }).value, '4.5');
+  const n = val('nadef', { na: 120, weight: 70, age: 40, sex: 'F' });
+  assert.equal(n.value, '280'); assert.equal(lineVal(n, '3% saline'), 10.9);
+  assert.equal(val('nadef', { na: 120, weight: 70, age: 40, sex: 'F', naTarget: 125 }).value, '175');
+  assert.equal(val('maint', { weight: 70 }).value, '110');
+  assert.equal(val('maint', { weight: 15 }).value, '50');
+});
+t('IBW and adjusted body weight', () => {
+  assert.equal(val('ibw', { height: 180, sex: 'M' }).value, '75');
+  assert.equal(val('ibw', { height: 165, sex: 'F' }).value, '56.9');
+  assert.equal(val('adjbw', { height: 180, sex: 'M', weight: 120 }).value, '93');
+});
+t('GCA probability score', () => {
+  const r = val('gcaps', { age: 72, sex: 'F', gcaOnset: '3', crp: 40, gcaHeadache: true, gcaConst: '1', gcaIschaemic: true, gcaTa: '1', gcaExtra: '0' });
+  assert.equal(r.value, '17 points'); assert.equal(r.tier, 'high');
+  const low = val('gcaps', { age: 55, sex: 'M', gcaOnset: '0', crp: 3, gcaConst: '0', gcaTa: '0', gcaExtra: '0', gcaAltDx: true });
+  assert.equal(low.value, '-1 point'); assert.equal(low.tier, 'low');
+});
+
 console.log(`\n${n} test groups passed`);

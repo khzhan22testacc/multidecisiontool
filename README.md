@@ -6,9 +6,24 @@ Pick several tools, enter each shared value once (by voice, by typing a phrase, 
 
 ## What is in it
 
-20 tools: Framingham (with CCS family-history adjustment), HEART, CHA2DS2-VASc with CHADS-65, HAS-BLED, Wells PE, PERC, Wells DVT, CURB-65, qSOFA, Glasgow-Blatchford, MELD-Na and MELD 3.0, Child-Pugh, FIB-4, R factor, CKD-EPI 2021 eGFR, Cockcroft-Gault, anion gap with delta ratio, corrected calcium, glucose-corrected sodium, serum osmolality.
+43 tools, grouped by system. Tap ☆ on any tool to pin it to a Favourites section at the top, with a one-tap "Select all".
 
-Units are SI (µmol/L, mmol/L, g/L).
+- Cardiology: Framingham (with CCS family-history adjustment), HEART, CHA2DS2-VASc with CHADS-65, HAS-BLED, MAP
+- Thrombosis: Wells PE, PERC, Wells DVT
+- Respirology and sepsis: CURB-65, qSOFA, PaO2/FiO2
+- GI and hepatology: Glasgow-Blatchford, MELD-Na and MELD 3.0, Child-Pugh, FIB-4, R factor
+- Kidney: CKD-EPI 2021 eGFR, Cockcroft-Gault, KDIGO CKD staging, KFRE 4- and 8-variable (North American calibration), FENa, FEurea, urea:creatinine (BUN:Cr), AIN risk (Moledina), ATN-ISI (Liaño), SHARF II at diagnosis, Mehran, McMahon
+- Acid–base: anion gap, delta gap and delta ratio, Winters, acid–base compensation, urine anion gap, serum osmolality
+- Electrolytes and fluids: corrected calcium, glucose-corrected sodium, free water deficit, sodium deficit with Adrogué-Madias, maintenance fluids
+- Body weight: ideal body weight (Devine), adjusted body weight
+- Rheumatology: GCA Probability Score (GCAPS)
+
+Units are SI (µmol/L, mmol/L, g/L; urine creatinine in mmol/L; ACR in mg/mmol).
+
+### Notes on specific tools
+- SHARF II uses prothrombin activity in Quick % (European reporting), not INR.
+- GCA uses the Southend GCA Probability Score (Laskou 2019). The Ing logistic model was not used because its published coefficients do not reproduce the paper's own examples.
+- KFRE, CKD staging and Mehran compute eGFR from creatinine with CKD-EPI 2021 (Mehran's original used MDRD).
 
 ## Put it on a phone
 
@@ -26,7 +41,7 @@ To try it on a computer: `./tools/get-vendor.sh`, `./tools/get-model.sh`, then `
 ## Privacy design
 
 - Patient values exist only in the memory of the open screen. They are not written to localStorage, IndexedDB, cookies, the URL or the service-worker cache. "New patient" or closing the app erases them.
-- The only thing saved between sessions is the list of ticked tools.
+- The only things saved between sessions are the lists of ticked and starred (favourite) tools.
 - Speech recognition (Vosk for guided entry, Whisper for sentence dictation) runs in WebAssembly on the phone. The browser's built-in speech recognition is deliberately not used, because on Android it sends audio to Google.
 - The page carries a Content-Security-Policy that allows connections to its own origin only. The speech worker additionally refuses any request to another origin, and remote model loading is switched off.
 - No analytics, no fonts or scripts from other sites, no accounts.

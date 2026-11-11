@@ -11,6 +11,10 @@ import { interpret } from './spoken.js';
 // ---------- state
 const PREF_KEY = 'imcalc.selectedTools'; // tool ids only; no patient data
 let selected = loadSelection();
+const FAV_KEY = 'imcalc.favouriteTools';   // tool ids only; no patient data
+let favourites = (() => {
+  try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]').filter(id => SCORE[id]); } catch { return []; }
+})();
 let values = {};                          // in memory only
 let tab = selected.length ? 'values' : 'tools';
 let dict = { text: '', chips: [], msg: '', progress: null, state: 'idle' };
@@ -95,26 +99,60 @@ function toolsView() {
       selected.length ? `Enter values for ${selected.length} ${selected.length === 1 ? 'tool' : 'tools'}` : 'Select at least one tool'),
     h('div', { class: 'foot' },
       h('p', {}, 'Privacy: values you enter stay in this screen\'s memory and are erased when you tap New patient or close the app. ' +
-        'Speech is transcribed on this phone. The only thing remembered between sessions is which tools you ticked.'),
+        'Speech is transcribed on this phone. The only things remembered between sessions are which tools you ticked and starred.'),
       h('p', {}, 'Decision support for trained clinicians. Units are SI (Canadian). Confirm inputs and apply clinical judgment.')),
   ];
   return out;
 }
+function toolRow(s) {
+  const on = selected.includes(s.id), fav = favourites.includes(s.id);
+  return h('div', { class: 'row tool' + (on ? ' on' : '') },
+    h('button', { class: 'sel', type: 'button', 'aria-pressed': String(on), onclick: () => toggleTool(s.id) },
+      h('span', { class: 'check', 'aria-hidden': 'true' }, '✓'),
+      h('span', { class: 'grow' }, h('span', { class: 'name' }, s.name), h('br'), h('span', { class: 'hint' }, s.about))),
+    h('button', {
+      class: 'star' + (fav ? ' on' : ''), type: 'button', 'aria-pressed': String(fav),
+      'aria-label': fav ? `Remove ${s.name} from favourites` : `Add ${s.name} to favourites`,
+      onclick: () => toggleFavourite(s.id),
+    }, fav ? '★' : '☆'));
+}
+
 function toolList(q) {
   const blocks = [];
+  const match = s => !q || (s.name + ' ' + s.about).toLowerCase().includes(q);
+  const favs = SCORES.filter(s => favourites.includes(s.id) && match(s));
+  if (favs.length) {
+    const allOn = favs.every(s => selected.includes(s.id));
+    blocks.push(h('div', { class: 'fav-head' }, h('h2', {}, '★ Favourites'),
+      h('button', { class: 'linkbtn', type: 'button', onclick: () => selectFavourites(!allOn) }, allOn ? 'Clear these' : 'Select all')));
+    blocks.push(h('div', { class: 'card' }, favs.map(toolRow)));
+  } else if (!q) {
+    blocks.push(h('p', { class: 'fav-tip' }, 'Tap ☆ on any tool to pin it to a Favourites section here.'));
+  }
   for (const c of CATEGORIES) {
-    const list = SCORES.filter(s => s.cat === c.id && (!q || (s.name + ' ' + s.about).toLowerCase().includes(q)));
+    const list = SCORES.filter(s => s.cat === c.id && match(s));
     if (!list.length) continue;
     blocks.push(h('h2', {}, c.label));
-    blocks.push(h('div', { class: 'card' }, list.map(s => {
-      const on = selected.includes(s.id);
-      return h('button', { class: 'row', type: 'button', 'aria-pressed': String(on), onclick: () => toggleTool(s.id) },
-        h('span', { class: 'check', 'aria-hidden': 'true' }, '✓'),
-        h('span', { class: 'grow' }, h('span', { class: 'name' }, s.name), h('br'), h('span', { class: 'hint' }, s.about)));
-    })));
+    blocks.push(h('div', { class: 'card' }, list.map(toolRow)));
   }
-  if (!blocks.length) blocks.push(h('p', { class: 'empty' }, 'No tools match that search.'));
+  if (!favs.length && !SCORES.some(match)) blocks.push(h('p', { class: 'empty' }, 'No tools match that search.'));
   return blocks;
+}
+
+function toggleFavourite(id) {
+  favourites = favourites.includes(id) ? favourites.filter(x => x !== id) : [...favourites, id];
+  favourites = SCORES.map(s => s.id).filter(x => favourites.includes(x));
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(favourites)); } catch { /* private mode */ }
+  renderToolList();
+}
+
+function selectFavourites(on) {
+  const favSet = new Set(favourites);
+  selected = SCORES.map(s => s.id).filter(x => on ? (selected.includes(x) || favSet.has(x)) : (selected.includes(x) && !favSet.has(x)));
+  saveSelection();
+  renderToolList();
+  syncToValues();
+  updateBadges();
 }
 function renderToolList() {
   document.getElementById('tool-list').replaceChildren(...toolList(filter.trim().toLowerCase()));
@@ -125,10 +163,14 @@ function toggleTool(id) {
   selected = SCORES.map(s => s.id).filter(x => selected.includes(x));
   saveSelection();
   renderToolList();
+  syncToValues();
+  updateBadges();
+}
+function syncToValues() {
   const b = document.getElementById('to-values');
+  if (!b) return;
   b.disabled = !selected.length;
   b.textContent = selected.length ? `Enter values for ${selected.length} ${selected.length === 1 ? 'tool' : 'tools'}` : 'Select at least one tool';
-  updateBadges();
 }
 
 // ---------- 2. values
@@ -526,7 +568,8 @@ function resultsView() {
 function resultCard({ score, result: r }) {
   const rows = [];
   for (const [label, p] of r.parts || []) {
-    rows.push(h('tr', { class: p === 0 ? 'zero' : '' }, h('td', {}, label), h('td', {}, (p > 0 ? '+' : '') + p)));
+    const shown = Number(p.toFixed(3));
+    rows.push(h('tr', { class: p === 0 ? 'zero' : '' }, h('td', {}, label), h('td', {}, (p > 0 ? '+' : '') + shown)));
   }
   for (const [label, text] of r.lines || []) rows.push(h('tr', {}, h('td', {}, label), h('td', { class: 'wrap' }, text)));
   return h('article', { class: 'card res' },
