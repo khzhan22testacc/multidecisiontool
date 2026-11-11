@@ -1,10 +1,11 @@
 // Service worker: makes the app work with no connection.
 // It only ever serves and caches this app's own files. It never sees patient
 // values (those live in page memory and are not part of any request).
-const CACHE = 'imcalc-v1';
+const CACHE = 'imcalc-v2';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/engine.js', 'js/scores.js', 'js/variables.js', 'js/parser.js', 'js/speech.js', 'js/stt-worker.js',
+  'js/spoken.js', 'js/voice.js', 'js/vosk-worker.js', 'js/mic-worklet.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
 ];
 

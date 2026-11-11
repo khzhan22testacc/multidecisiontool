@@ -17,7 +17,7 @@ The app is a Progressive Web App. It must be served over HTTPS once, after which
 1. Create a GitHub repository and push this folder to the `main` branch.
 2. In the repository, open Settings, then Pages, and set Source to "GitHub Actions". The included workflow runs the tests, downloads the speech model and publishes the site.
 3. On the phone, open the Pages address in Chrome, then menu, then "Add to Home screen" (or "Install app").
-4. Open the app once while online and tap Speak once, so the voice engine and model (about 68 MB in total) are cached. From then on it works in airplane mode.
+4. Open the app once while online and tap Start voice entry once, so the voice engine and model (about 43 MB) are stored. From then on it works in airplane mode.
 
 To host it elsewhere, run `./tools/get-vendor.sh` and `./tools/get-model.sh` once in this folder and upload everything to any static HTTPS host.
 
@@ -27,7 +27,7 @@ To try it on a computer: `./tools/get-vendor.sh`, `./tools/get-model.sh`, then `
 
 - Patient values exist only in the memory of the open screen. They are not written to localStorage, IndexedDB, cookies, the URL or the service-worker cache. "New patient" or closing the app erases them.
 - The only thing saved between sessions is the list of ticked tools.
-- Speech recognition is Whisper (tiny, English) running in WebAssembly on the phone. The browser's built-in speech recognition is deliberately not used, because on Android it sends audio to Google.
+- Speech recognition (Vosk for guided entry, Whisper for sentence dictation) runs in WebAssembly on the phone. The browser's built-in speech recognition is deliberately not used, because on Android it sends audio to Google.
 - The page carries a Content-Security-Policy that allows connections to its own origin only. The speech worker additionally refuses any request to another origin, and remote model loading is switched off.
 - No analytics, no fonts or scripts from other sites, no accounts.
 - Audio is held in memory for one dictation and then dropped.
@@ -36,16 +36,24 @@ One thing outside the app's control: the phone's keyboard may learn typed text, 
 
 ## How voice entry works
 
-Speech becomes text with Whisper on the device. The text is then read by a rule-based parser (`js/parser.js`), not a generative model, so it can only record a number that is literally in the transcript. It understands phrases such as:
+### Guided entry (main mode)
+Tap **Start voice entry**. The app highlights each blank field your selected tools need, one at a time, and you say the value.
 
-- "sodium 125, ALP 130, creatinine 180"
-- "BP 110 over 70, heart rate 104, sats 93"
-- "67 year old woman"
-- "INR one point eight"
+- Numbers the way you'd say them: "one twenty five", "one hundred and twenty five", "one oh five", "seven point four", "point nine", "twelve hundred".
+- Commands: "skip" or "next", "back", "clear", "stop" or "done". The Back, Skip and Stop buttons do the same.
+- Yes/No fields: say "yes" or "no". Multiple-choice fields: say the option number shown. Sex: "male" or "female".
+- A value outside the plausible range is kept but flagged, and the app stays on that field so you can say it again or "next" to keep it.
+- Every field stays editable by hand, including while voice entry is running. Fields you fill by hand are skipped.
+- The mic button beside any field records just that one value.
 
-Every recognised value is shown as a chip and filled into its field for you to check. Yes/No items and multiple-choice items are tapped, not dictated.
+Speech recognition is Vosk (Kaldi) with the small English model, running in WebAssembly on the phone. It is restricted to number words and the commands above, so it cannot output anything else, and it shows the words live as you speak. A short pause ends a value; phrases split by a brief pause ("one ... twenty five") are joined.
 
-For better recognition of lab names at the cost of speed and size, use the base model: run `./tools/get-model.sh Xenova/whisper-base.en` and change `MODEL_ID` in `js/stt-worker.js`.
+### Sentence dictation (secondary)
+"Or dictate a full sentence instead" opens free dictation ("sodium 125, ALP 130, BP 110 over 70") using Whisper tiny on the phone, read by a rule-based parser (`js/parser.js`). It only loads if you use it. For better accuracy, switch to Whisper base (about 77 MB): `./tools/get-model.sh Xenova/whisper-base.en` and change `MODEL_ID` in `js/stt-worker.js`. In the GitHub workflow, add `Xenova/whisper-base.en` after `get-model.sh`.
+
+### Downloads on first use
+- Guided entry: about 43 MB (engine plus model), stored on the phone after the first use.
+- Sentence dictation: about 68 MB, only if used.
 
 ## Code layout
 
@@ -53,7 +61,8 @@ For better recognition of lab names at the cost of speed and size, use the base 
 - `js/scores.js`: scoring rules. Each score lists the variable ids it needs and a `compute` function.
 - `js/engine.js`: works out the de-duplicated input list for the selected scores and evaluates them.
 - `js/parser.js`: dictation text to values.
-- `js/speech.js`, `js/stt-worker.js`: microphone capture and on-device Whisper.
+- `js/voice.js`, `js/vosk-worker.js`, `js/mic-worklet.js`, `js/spoken.js`: guided voice entry (Vosk, number words, commands).
+- `js/speech.js`, `js/stt-worker.js`: sentence dictation with on-device Whisper.
 - `js/app.js`: interface.
 - `sw.js`: offline cache. Change `CACHE` to a new name whenever you publish an update.
 - `tests/run.mjs`: `node tests/run.mjs` checks every formula and the parser.

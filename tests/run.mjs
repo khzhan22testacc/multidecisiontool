@@ -4,6 +4,7 @@ import { evaluate, requiredInputs } from '../js/engine.js';
 import { parseDictation } from '../js/parser.js';
 import { SCORES } from '../js/scores.js';
 import { VAR } from '../js/variables.js';
+import { parseSpokenNumber, interpret, GRAMMAR } from '../js/spoken.js';
 
 let n = 0;
 const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
@@ -168,5 +169,44 @@ t('parser: ignores text without a value', () => {
   assert.deepEqual(p('alternative plan in 3 days'), {});
 });
 t('parser: later value replaces earlier', () => assert.deepEqual(p('sodium 125, sorry sodium 135'), { na: 135 }));
+
+// ---- guided voice entry (spoken numbers and commands)
+t('spoken numbers: clinician styles', () => {
+  const cases = {
+    'one twenty five': 125, 'one hundred twenty five': 125, 'one hundred and twenty five': 125,
+    'one thirty': 130, 'one oh five': 105, 'one one five': 115, 'two ten': 210, 'ninety eight': 98,
+    'four': 4, 'zero': 0, 'twelve hundred': 1200, 'one thousand two hundred': 1200, 'fifteen hundred': 1500,
+    'one point eight': 1.8, 'point nine': 0.9, 'zero point nine': 0.9, 'seven point two five': 7.25,
+    'seven point twenty five': 7.25, 'two point oh five': 2.05, 'one forty': 140, 'thirty eight point five': 38.5,
+    'four hundred': 400, 'twenty': 20,
+  };
+  for (const [k, v] of Object.entries(cases)) assert.equal(parseSpokenNumber(k), v, k);
+  assert.equal(parseSpokenNumber('skip'), null);
+  assert.equal(parseSpokenNumber(''), null);
+});
+t('guided interpret: commands, yes/no, choices, sex', () => {
+  const num = { kind: 'num', id: 'na' };
+  assert.deepEqual(interpret('one twenty five', num), { value: 125 });
+  assert.deepEqual(interpret('[unk] one twenty five', num), { value: 125 });
+  assert.deepEqual(interpret('skip', num), { cmd: 'skip' });
+  assert.deepEqual(interpret('next', num), { cmd: 'skip' });
+  assert.deepEqual(interpret('no back', num), { cmd: 'back' });
+  assert.deepEqual(interpret('stop', num), { cmd: 'stop' });
+  assert.deepEqual(interpret('[unk]', num), { none: true });
+  assert.deepEqual(interpret('yes', num), { none: true });
+  const yn = { kind: 'bool', id: 'diabetes' };
+  assert.deepEqual(interpret('yes', yn), { value: true });
+  assert.deepEqual(interpret('no', yn), { value: false });
+  assert.deepEqual(interpret('one', yn), { none: true });
+  const asc = VAR.ascites;
+  assert.deepEqual(interpret('two', asc), { value: 'slight' });
+  assert.deepEqual(interpret('four', asc), { none: true });
+  assert.deepEqual(interpret('female', VAR.sex), { value: 'F' });
+  assert.deepEqual(interpret('one', VAR.sex), { value: 'M' });
+});
+t('grammar holds every command and number word', () => {
+  const g = JSON.parse(GRAMMAR);
+  for (const w of ['one', 'twenty', 'hundred', 'point', 'oh', 'skip', 'back', 'stop', 'yes', 'no', 'male', 'female', '[unk]']) assert.ok(g.includes(w), w);
+});
 
 console.log(`\n${n} test groups passed`);

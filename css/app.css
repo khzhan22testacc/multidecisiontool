@@ -147,3 +147,38 @@ td.wrap { white-space: normal; }
 .empty { text-align: center; color: var(--muted); padding: 40px 20px; }
 .foot { color: var(--muted); font-size: 0.8rem; margin: 22px 4px 0; }
 .foot p + p { margin-top: 8px; }
+
+/* Guided voice entry */
+.voice .btn.wide-in { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; font-size: 1.05rem; }
+.voice svg, .fmic svg { width: 22px; height: 22px; fill: currentColor; }
+.vhint { color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
+.linkbtn { font: inherit; font-size: 0.88rem; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 10px 0 0; cursor: pointer; }
+.voice.live {
+  position: sticky; top: var(--hdr, 64px); z-index: 4; border: 2px solid var(--accent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+.vtop { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--high); animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+.vfield { font-size: 1.5rem; font-weight: 750; margin-top: 4px; line-height: 1.2; }
+.vfield small { font-size: 0.9rem; font-weight: 600; color: var(--muted); margin-left: 6px; }
+.vprompt { color: var(--muted); font-size: 0.88rem; margin-top: 2px; }
+.vpartial { font-size: 1.25rem; font-weight: 600; min-height: 1.6em; margin-top: 8px; color: var(--accent); }
+.vlast { margin-top: 6px; padding: 8px 10px; border-radius: 10px; font-weight: 600; font-size: 0.92rem; }
+.vlast.ok { background: var(--low-bg); color: var(--low); }
+.vlast.warn { background: var(--mod-bg); color: var(--mod); }
+.vlast.bad { background: var(--high-bg); color: var(--high); }
+.vlast.info { background: var(--info-bg); color: var(--info); }
+.vbtns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+.vbtns .btn { min-height: 48px; }
+.sentence { margin-top: 10px; }
+.fmic {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--bg);
+  color: var(--muted); display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.fmic.on { background: var(--high); border-color: var(--high); color: #fff; }
+.field.cur { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
+.choice-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.numwrap input { width: 84px; }
+.numwrap .unit { width: 54px; }
