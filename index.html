@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0f5c63">
+<title>IMcalc</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>IMcalc</h1>
+    <p class="sub" id="status-line">On-device only. Nothing is saved or sent.</p>
+  </div>
+  <button id="new-patient" class="btn ghost" type="button">New patient</button>
+</header>
+
+<main id="view" tabindex="-1"></main>
+
+<nav class="tabs" aria-label="Steps">
+  <button type="button" data-tab="tools" class="tab"><span class="n">1</span>Tools <b id="badge-tools"></b></button>
+  <button type="button" data-tab="values" class="tab"><span class="n">2</span>Values <b id="badge-values"></b></button>
+  <button type="button" data-tab="results" class="tab"><span class="n">3</span>Results <b id="badge-results"></b></button>
+</nav>
+
+<noscript>This app needs JavaScript.</noscript>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
