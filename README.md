@@ -19,9 +19,9 @@ The app is a Progressive Web App. It must be served over HTTPS once, after which
 3. On the phone, open the Pages address in Chrome, then menu, then "Add to Home screen" (or "Install app").
 4. Open the app once while online and tap Speak once, so the voice engine and model (about 68 MB in total) are cached. From then on it works in airplane mode.
 
-To host it elsewhere, run `./tools/get-model.sh` once in this folder and upload everything to any static HTTPS host.
+To host it elsewhere, run `./tools/get-vendor.sh` and `./tools/get-model.sh` once in this folder and upload everything to any static HTTPS host.
 
-To try it on a computer: `./tools/get-model.sh`, then `python3 -m http.server 8000`, then open http://localhost:8000.
+To try it on a computer: `./tools/get-vendor.sh`, `./tools/get-model.sh`, then `python3 -m http.server 8000`, then open http://localhost:8000.
 
 ## Privacy design
 
